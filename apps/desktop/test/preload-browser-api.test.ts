@@ -15,6 +15,7 @@ import {
   BB_DESKTOP_GET_INFO_CHANNEL,
   BB_DESKTOP_INFO_CHANGED_CHANNEL,
   BB_DESKTOP_INSTALL_UPDATE_CHANNEL,
+  BB_DESKTOP_SET_APP_ICON_CHANNEL,
   BB_DESKTOP_SET_THEME_CHANNEL,
 } from "../src/desktop-update-ipc.js";
 import {
@@ -303,6 +304,8 @@ describe("desktop preload browser API", () => {
     expect(api.focusWindow).toBeTypeOf("function");
     api.focusWindow?.();
     api.setTheme("dark");
+    api.setAppIcon?.({ pngDataUrl: "data:image/png;base64,AA==" });
+    api.setAppIcon?.(null);
     await api.checkForUpdates();
     await expect(api.getWindowState?.()).resolves.toEqual({
       isFullScreen: false,
@@ -365,6 +368,11 @@ describe("desktop preload browser API", () => {
       },
       { channel: BB_DESKTOP_FOCUS_WINDOW_CHANNEL, payload: undefined },
       { channel: BB_DESKTOP_SET_THEME_CHANNEL, payload: "dark" },
+      {
+        channel: BB_DESKTOP_SET_APP_ICON_CHANNEL,
+        payload: { pngDataUrl: "data:image/png;base64,AA==" },
+      },
+      { channel: BB_DESKTOP_SET_APP_ICON_CHANNEL, payload: null },
     ]);
     expect(electronMock.invokeCalls).toContain(BB_DESKTOP_GET_INFO_CHANNEL);
     expect(electronMock.invokeCalls).toContain(

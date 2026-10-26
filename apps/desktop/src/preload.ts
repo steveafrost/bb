@@ -47,6 +47,7 @@ import {
   type BbDesktopInfoChangeHandler,
   type BbDesktopInfoUnsubscribe,
   type BbDesktopOpenNewTabHandler,
+  type BbDesktopAppIcon,
   type BbDesktopTheme,
   type BbDesktopWindowState,
   type BbDesktopWindowStateChangeHandler,
@@ -58,6 +59,7 @@ import {
   BB_DESKTOP_INFO_CHANGED_CHANNEL,
   BB_DESKTOP_INSTALL_UPDATE_CHANNEL,
   BB_DESKTOP_OPEN_EXTERNAL_URL_CHANNEL,
+  BB_DESKTOP_SET_APP_ICON_CHANNEL,
   BB_DESKTOP_SET_THEME_CHANNEL,
   BB_DESKTOP_ZOOM_CHANGED_CHANNEL,
   BB_DESKTOP_ZOOM_COMMAND_CHANNEL,
@@ -531,6 +533,9 @@ const bbDesktopApi: BbDesktopApi = {
   },
   setTheme(theme: BbDesktopTheme): void {
     ipcRenderer.send(BB_DESKTOP_SET_THEME_CHANNEL, theme);
+  },
+  setAppIcon(icon: BbDesktopAppIcon | null): void {
+    ipcRenderer.send(BB_DESKTOP_SET_APP_ICON_CHANNEL, icon);
   },
   async writeClipboard(content: BbDesktopClipboardContent): Promise<void> {
     await ipcRenderer.invoke(BB_DESKTOP_WRITE_CLIPBOARD_CHANNEL, content);

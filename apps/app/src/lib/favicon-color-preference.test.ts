@@ -4,6 +4,7 @@ import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultAppTheme } from "@bb/domain";
 import {
+  APP_ICON_STORAGE_KEY,
   FAVICON_COLOR_STORAGE_KEY,
   useFaviconColorSync,
 } from "./favicon-color-preference";
@@ -29,6 +30,12 @@ function setSystemFaviconColor(
   });
 }
 
+const APP_ICON_HASH = "a".repeat(64);
+const PNG_APP_ICON = {
+  contentType: "image/png" as const,
+  hash: APP_ICON_HASH,
+};
+
 describe("favicon color server sync", () => {
   afterEach(() => {
     window.localStorage.clear();
@@ -52,6 +59,35 @@ describe("favicon color server sync", () => {
 
     await waitFor(() =>
       expect(window.localStorage.getItem(FAVICON_COLOR_STORAGE_KEY)).toBeNull(),
+    );
+  });
+
+  it("mirrors the server app icon into the first-paint cache and clears it on reset", async () => {
+    mocks.useSystemConfig.mockReturnValue({
+      data: {
+        appearance: {
+          ...defaultAppTheme,
+          appIcon: { ...PNG_APP_ICON, byteLength: 10, updatedAt: 1 },
+        },
+      },
+    });
+    const { rerender } = renderHook(() => useFaviconColorSync());
+
+    await waitFor(() =>
+      expect(
+        JSON.parse(window.localStorage.getItem(APP_ICON_STORAGE_KEY) ?? "null"),
+      ).toEqual(PNG_APP_ICON),
+    );
+
+    mocks.useSystemConfig.mockReturnValue({ data: undefined });
+    rerender();
+    expect(window.localStorage.getItem(APP_ICON_STORAGE_KEY)).not.toBeNull();
+
+    setSystemFaviconColor("default");
+    rerender();
+
+    await waitFor(() =>
+      expect(window.localStorage.getItem(APP_ICON_STORAGE_KEY)).toBeNull(),
     );
   });
 });
@@ -124,6 +160,95 @@ describe("favicon rendering", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(FakeImage.created).toBe(2);
     unmount();
+  });
+
+  function addIconLinks(): void {
+    document.head.innerHTML = [
+      '<link id="favicon-32" rel="icon" href="/favicon-32x32.png">',
+      '<link id="favicon-16" rel="icon" href="/favicon-16x16.png">',
+      '<link id="apple-touch-icon" rel="apple-touch-icon" href="/apple-touch-icon.png">',
+      '<link id="app-manifest" rel="manifest" href="/manifest.webmanifest">',
+    ].join("");
+  }
+
+  function linkHref(id: string): string | null {
+    return document.getElementById(id)?.getAttribute("href") ?? null;
+  }
+
+  function stubDrawableCanvas(): void {
+    Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+      configurable: true,
+      value: () => ({
+        arc: () => {},
+        beginPath: () => {},
+        drawImage: () => {},
+        fill: () => {},
+        restore: () => {},
+        save: () => {},
+      }),
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockImplementation(
+      function (this: HTMLCanvasElement) {
+        return `data:image/png;base64,${this.width}`;
+      },
+    );
+  }
+
+  it("points every install surface at a cached custom icon and hands the Dock a PNG", async () => {
+    stubDisplayMode(false);
+    stubDrawableCanvas();
+    vi.stubGlobal("Image", FakeImage);
+    addIconLinks();
+    window.localStorage.setItem(
+      APP_ICON_STORAGE_KEY,
+      JSON.stringify({ ...PNG_APP_ICON, contentType: "image/svg+xml" }),
+    );
+    const setAppIcon = vi.fn();
+    vi.stubGlobal("bbDesktop", { setAppIcon });
+    const module = await loadFreshModule();
+    module.initializeFavicon();
+
+    const iconHref = `/api/v1/system/app-icon?h=${APP_ICON_HASH}`;
+    await waitFor(() => expect(linkHref("favicon-32")).toBe(iconHref));
+    expect(linkHref("favicon-16")).toBe(iconHref);
+    expect(linkHref("app-manifest")).toBe(
+      "/api/v1/system/app-icon/manifest.webmanifest",
+    );
+    await waitFor(() =>
+      expect(linkHref("apple-touch-icon")).toBe("data:image/png;base64,180"),
+    );
+    await waitFor(() =>
+      expect(setAppIcon).toHaveBeenCalledWith({
+        pngDataUrl: "data:image/png;base64,512",
+      }),
+    );
+
+    const { unmount } = renderHook(() => module.useFaviconBadge("unread"));
+    await waitFor(() =>
+      expect(linkHref("favicon-32")).toBe("data:image/png;base64,64"),
+    );
+    unmount();
+    window.localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("ignores a corrupt cached icon and tells the desktop shell there is none", async () => {
+    stubDisplayMode(false);
+    vi.stubGlobal("Image", FakeImage);
+    addIconLinks();
+    window.localStorage.setItem(
+      APP_ICON_STORAGE_KEY,
+      JSON.stringify({ contentType: "image/png", hash: "../../etc" }),
+    );
+    const setAppIcon = vi.fn();
+    vi.stubGlobal("bbDesktop", { setAppIcon });
+    const module = await loadFreshModule();
+    module.initializeFavicon();
+
+    await waitFor(() => expect(setAppIcon).toHaveBeenCalledWith(null));
+    expect(linkHref("app-manifest")).toBe("/manifest.webmanifest");
+    expect(linkHref("apple-touch-icon")).toBe("/apple-touch-icon.png");
+    window.localStorage.clear();
   });
 
   it("skips favicon image work in standalone display mode", async () => {

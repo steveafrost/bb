@@ -266,6 +266,11 @@ function AppearanceSettingsStory() {
 
   return (
     <AppearanceSettingsSection
+      appIconDisabled={false}
+      onAppIconReset={() =>
+        state.setAppearance((current) => ({ ...current, appIcon: null }))
+      }
+      onAppIconUpload={() => undefined}
       appearance={state.appearance}
       appearanceDisabled={false}
       customThemes={["Monochrome Lab", "Low Contrast"]}

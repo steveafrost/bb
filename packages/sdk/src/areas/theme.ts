@@ -1,4 +1,8 @@
-import type { AppTheme, AppThemeSelection } from "@bb/domain";
+import {
+  appThemeSchema,
+  type AppTheme,
+  type AppThemeSelection,
+} from "@bb/domain";
 import type { ThemeCatalogResponse } from "@bb/server-contract";
 import { signalRequestArgs, type CreateSdkAreaArgs } from "./common.js";
 
@@ -21,12 +25,24 @@ export interface ThemeResolveArgs {
   signal?: AbortSignal;
 }
 
+export interface ThemeSetAppIconInput {
+  icon: Blob | Uint8Array;
+  filename?: string;
+  signal?: AbortSignal;
+}
+
+export interface ThemeResetAppIconArgs {
+  signal?: AbortSignal;
+}
+
 export interface ThemeArea {
   get(args?: ThemeGetArgs): Promise<ThemeGetResult>;
   catalog(args?: ThemeCatalogArgs): Promise<ThemeCatalogResult>;
   resolve(args: ThemeResolveArgs): Promise<ThemeResolveResult>;
   set(selection: ThemeSetInput): Promise<ThemeSetResult>;
   set(themeId: string): Promise<ThemeSetResult>;
+  setAppIcon(input: ThemeSetAppIconInput): Promise<ThemeSetResult>;
+  resetAppIcon(args?: ThemeResetAppIconArgs): Promise<ThemeSetResult>;
 }
 
 export function createThemeArea(args: CreateSdkAreaArgs): ThemeArea {
@@ -73,6 +89,34 @@ export function createThemeArea(args: CreateSdkAreaArgs): ThemeArea {
       }
       return transport.readJson(
         transport.api.v1.settings.appearance.$put({ json: input }),
+      );
+    },
+    async setAppIcon(input) {
+      const blob =
+        input.icon instanceof Blob
+          ? input.icon
+          : new Blob([new Uint8Array(input.icon)]);
+      if (blob.size === 0) {
+        throw new Error("App icon file must not be empty");
+      }
+      const form = new FormData();
+      form.set("file", blob, input.filename ?? "app-icon");
+      const baseUrl = transport.baseUrl.replace(/\/$/u, "");
+      const response = await transport.resolve(
+        transport.fetch(`${baseUrl}/api/v1/settings/app-icon`, {
+          method: "PUT",
+          body: form,
+          signal: input.signal,
+        }),
+      );
+      return appThemeSchema.parse(await response.json());
+    },
+    async resetAppIcon(input = {}) {
+      return transport.readJson(
+        transport.api.v1.settings["app-icon"].$delete(
+          {},
+          ...signalRequestArgs(input.signal),
+        ),
       );
     },
   };

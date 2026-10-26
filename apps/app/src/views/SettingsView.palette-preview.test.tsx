@@ -25,6 +25,9 @@ function renderSection({ compact = false } = {}) {
   const onAppearanceThemePreview = vi.fn();
   render(
     <AppearanceSettingsSection
+      appIconDisabled={false}
+      onAppIconReset={vi.fn()}
+      onAppIconUpload={vi.fn()}
       appearance={defaultAppTheme}
       appearanceDisabled={false}
       customThemes={["mine"]}

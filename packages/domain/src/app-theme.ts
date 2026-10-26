@@ -85,10 +85,26 @@ export type FaviconColorPreference = z.infer<
 
 export const defaultFaviconColor: FaviconColorPreference = "default";
 
+export const APP_ICON_MAX_BYTES = 1024 * 1024;
+export const APP_ICON_MIN_PIXELS = 128;
+export const APP_ICON_MAX_PIXELS = 4096;
+
+export const appIconContentTypeSchema = z.enum(["image/png", "image/svg+xml"]);
+export type AppIconContentType = z.infer<typeof appIconContentTypeSchema>;
+
+export const appIconSchema = z.object({
+  contentType: appIconContentTypeSchema,
+  hash: z.string().regex(/^[0-9a-f]{64}$/u),
+  byteLength: z.number().int().positive().max(APP_ICON_MAX_BYTES),
+  updatedAt: z.number().int().nonnegative(),
+});
+export type AppIcon = z.infer<typeof appIconSchema>;
+
 export const appThemeSchema = z.object({
   themeId: z.string().min(1),
   customCss: z.string().max(CUSTOM_THEME_CSS_MAX_LENGTH).nullable(),
   faviconColor: faviconColorPreferenceSchema,
+  appIcon: appIconSchema.nullable().default(null),
   resolvedCodeTheme: resolvedCodeThemeSchema.default(defaultResolvedCodeTheme),
 });
 export type AppTheme = z.infer<typeof appThemeSchema>;
@@ -117,5 +133,6 @@ export const defaultAppTheme: AppTheme = {
   themeId: "default",
   customCss: null,
   faviconColor: defaultFaviconColor,
+  appIcon: null,
   resolvedCodeTheme: defaultResolvedCodeTheme,
 };

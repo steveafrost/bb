@@ -21,6 +21,7 @@ function customTheme(themeId: string, customCss: string): AppTheme {
     themeId,
     customCss,
     faviconColor: "default",
+    appIcon: null,
     resolvedCodeTheme: defaultResolvedCodeTheme,
   };
 }

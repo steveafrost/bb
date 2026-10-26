@@ -16,6 +16,7 @@ export {
   type PluginBuildToolchain,
 } from "./toolchain.js";
 export {
+  assertValidAppIconSvg,
   assertValidPluginCompactIconSvg,
   assertValidPluginIconSvg,
 } from "./svg-asset.js";

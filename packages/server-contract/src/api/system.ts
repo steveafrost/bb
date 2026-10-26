@@ -133,6 +133,24 @@ export type SystemUsageLimitsQuery = z.infer<
   typeof systemUsageLimitsQuerySchema
 >;
 
+export type AppIconUploadForm = Record<"file", Blob>;
+
+export interface AppIconManifest {
+  name: string;
+  short_name: string;
+  start_url: string;
+  scope: string;
+  display: "standalone";
+  background_color: string;
+  theme_color: string;
+  icons: Array<{
+    src: string;
+    sizes: string;
+    type: string;
+    purpose: "any";
+  }>;
+}
+
 export interface SystemVoiceTranscriptionForm {
   [key: string]: string | Blob;
 }

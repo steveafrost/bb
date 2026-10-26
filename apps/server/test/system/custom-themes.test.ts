@@ -38,11 +38,11 @@ describe("custom themes service", () => {
   });
 
   it("falls back to default palette but keeps the favicon tint for a missing or unsafe selection", () => {
-    expect(resolveAppTheme(themeRoot, "missing", "pink")).toEqual({
+    expect(resolveAppTheme(themeRoot, "missing", "pink", null)).toEqual({
       ...defaultAppTheme,
       faviconColor: "pink",
     });
-    expect(resolveAppTheme(themeRoot, "../escape", "pink")).toEqual({
+    expect(resolveAppTheme(themeRoot, "../escape", "pink", null)).toEqual({
       ...defaultAppTheme,
       faviconColor: "pink",
     });
@@ -55,7 +55,7 @@ describe("custom themes service", () => {
       "a".repeat(CUSTOM_THEME_CSS_MAX_LENGTH + 1),
     );
     expect(readCustomThemeCss(themeRoot, "huge")).toBeNull();
-    expect(resolveAppTheme(themeRoot, "huge", "default")).toEqual(
+    expect(resolveAppTheme(themeRoot, "huge", "default", null)).toEqual(
       defaultAppTheme,
     );
   });

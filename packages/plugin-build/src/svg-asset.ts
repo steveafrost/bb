@@ -202,3 +202,7 @@ export function assertValidPluginIconSvg(
   }
   assertValidPluginSvg(bytes, `manifest ${label}`, DECLARED_ICON_RULES);
 }
+
+export function assertValidAppIconSvg(bytes: Uint8Array): void {
+  assertValidPluginSvg(bytes, "App icon SVG", DECLARED_ICON_RULES);
+}

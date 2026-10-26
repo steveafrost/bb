@@ -6,5 +6,6 @@ export const BB_DESKTOP_INSTALL_UPDATE_CHANNEL = "bb-desktop:install-update";
 export const BB_DESKTOP_ZOOM_COMMAND_CHANNEL = "bb-desktop:zoom-command";
 export const BB_DESKTOP_ZOOM_CHANGED_CHANNEL = "bb-desktop:zoom-changed";
 export const BB_DESKTOP_SET_THEME_CHANNEL = "bb-desktop:set-theme";
+export const BB_DESKTOP_SET_APP_ICON_CHANNEL = "bb-desktop:set-app-icon";
 export const BB_DESKTOP_OPEN_EXTERNAL_URL_CHANNEL =
   "bb-desktop:open-external-url";

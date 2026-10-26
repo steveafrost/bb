@@ -400,7 +400,13 @@ type ExpectedSystemKey =
 
 type ExpectedSystemUiPreferencesKey = "list" | "reset" | "set";
 
-type ExpectedThemeKey = "catalog" | "get" | "resolve" | "set";
+type ExpectedThemeKey =
+  | "catalog"
+  | "get"
+  | "resetAppIcon"
+  | "resolve"
+  | "set"
+  | "setAppIcon";
 
 type ExpectedThreadSectionsKey = "create" | "delete" | "list" | "update";
 

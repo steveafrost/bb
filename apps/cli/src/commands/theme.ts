@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { basename, resolve } from "node:path";
 import { Command } from "commander";
 import {
   builtInThemes,
@@ -42,6 +44,13 @@ function describeTheme(theme: AppTheme): string {
   return meta ? `${meta.name} (${meta.id})` : theme.themeId;
 }
 
+function describeAppIcon(theme: AppTheme): string {
+  const icon = theme.appIcon;
+  if (icon === null) return "none";
+  const format = icon.contentType === "image/png" ? "PNG" : "SVG";
+  return `custom ${format} (${icon.byteLength} bytes)`;
+}
+
 function describeCodeTheme(theme: AppTheme): string {
   const { dark, light } = theme.resolvedCodeTheme;
   return dark === light ? dark : `${dark} / ${light}`;
@@ -53,7 +62,7 @@ export function registerThemeCommands(
 ): void {
   const theme = program
     .command("theme")
-    .description("Manage the app theme and favicon color");
+    .description("Manage the app theme, favicon color, and app icon");
 
   theme
     .command("list")
@@ -103,6 +112,7 @@ export function registerThemeCommands(
         console.log("");
         console.log(`Active: ${describeTheme(catalog.active)}`);
         console.log(`Favicon color: ${catalog.active.faviconColor}`);
+        console.log(`App icon: ${describeAppIcon(catalog.active)}`);
         console.log(`Code theme: ${describeCodeTheme(catalog.active)}`);
       }),
     );
@@ -185,6 +195,45 @@ export function registerThemeCommands(
       }),
     );
 
+  const icon = theme
+    .command("icon")
+    .description(
+      "Manage the custom app icon used for the favicon, PWA, and desktop Dock",
+    );
+
+  icon
+    .command("set <path>")
+    .description(
+      "Upload a square PNG (128-4096 px) or SVG of at most 1 MiB as the app icon",
+    )
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (path: string, opts: JsonOutputOptions) => {
+        const filePath = resolve(path);
+        const bytes = await readFile(filePath);
+        const sdk = createCliBbSdk(getUrl());
+        const updated = await sdk.theme.setAppIcon({
+          icon: bytes,
+          filename: basename(filePath),
+        });
+        if (outputJson(opts, updated)) return;
+        console.log(`App icon set to ${describeAppIcon(updated)}`);
+      }),
+    );
+
+  icon
+    .command("reset")
+    .description("Remove the custom app icon and restore the bundled icon")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(async (opts: JsonOutputOptions) => {
+        const sdk = createCliBbSdk(getUrl());
+        const updated = await sdk.theme.resetAppIcon();
+        if (outputJson(opts, updated)) return;
+        console.log("App icon reset to the bundled icon");
+      }),
+    );
+
   theme
     .command("show [id]")
     .description(
@@ -213,6 +262,7 @@ export function registerThemeCommands(
         if (id === undefined) {
           console.log(`Active: ${describeTheme(theme)}`);
           console.log(`Favicon color: ${theme.faviconColor}`);
+          console.log(`App icon: ${describeAppIcon(theme)}`);
         } else {
           console.log(`Theme: ${describeTheme(theme)}`);
         }

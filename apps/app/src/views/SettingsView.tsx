@@ -17,6 +17,7 @@ import {
   earlyAdopterExperiments,
   experimentKeys,
   managedBranchPrefixSchema,
+  type AppIcon,
   type AppTheme,
   type ExperimentKey,
   type Experiments,
@@ -78,6 +79,8 @@ import { CliCommandSettingsSection } from "@/components/settings/CliCommandSetti
 import { CliSkillsSettingsSection } from "@/components/settings/CliSkillsSettingsSection";
 import { MarketplacesSettingsSection } from "@/components/settings/MarketplacesSettingsSection";
 import {
+  useResetAppIcon,
+  useSetAppIcon,
   useUpdateGeneralSettings,
   useUpdateAppearance,
   useUpdateExperiments,
@@ -87,6 +90,7 @@ import { useWorkspaceOpenTargets } from "@/hooks/useWorkspaceOpenTargets";
 import { isDesktopBrowserAvailable } from "@/lib/bb-desktop";
 import {
   FAVICON_COLOR_VALUES,
+  getAppIconHref,
   getFaviconGlyphHref,
 } from "@/lib/favicon-color-preference";
 import { useOpenLinksInAppBrowserPreference } from "@/lib/in-app-browser-link-preference";
@@ -153,7 +157,17 @@ interface FaviconColorSettingsControlProps {
   onFaviconColorChange: (faviconColor: FaviconColorPreference) => void;
 }
 
+interface AppIconSettingsControlProps {
+  appIcon: AppIcon | null;
+  disabled: boolean;
+  onAppIconReset: () => void;
+  onAppIconUpload: (file: File) => void;
+}
+
 interface AppearanceSettingsSectionProps {
+  appIconDisabled: boolean;
+  onAppIconReset: () => void;
+  onAppIconUpload: (file: File) => void;
   appearance: AppTheme;
   appearanceDisabled: boolean;
   customThemes: readonly string[];
@@ -374,6 +388,71 @@ function FaviconColorSettingsControl({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+    </SettingsWithControl>
+  );
+}
+
+const APP_ICON_ACCEPT = "image/png,image/svg+xml,.png,.svg";
+
+function AppIconSettingsControl({
+  appIcon,
+  disabled,
+  onAppIconReset,
+  onAppIconUpload,
+}: AppIconSettingsControlProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <SettingsWithControl
+      label="App icon"
+      description="Replace the favicon, install icon, and desktop Dock icon. Square PNG or SVG, up to 1 MB. Overrides the favicon color."
+    >
+      <div className="flex items-center gap-2">
+        {appIcon === null ? (
+          <span
+            aria-hidden
+            className="size-6 shrink-0 bg-foreground"
+            style={{
+              mask: `url("${getFaviconGlyphHref()}") center / contain no-repeat`,
+            }}
+          />
+        ) : (
+          <img
+            src={getAppIconHref(appIcon)}
+            alt="Current app icon"
+            className="size-6 shrink-0 rounded-sm object-contain"
+          />
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept={APP_ICON_ACCEPT}
+          aria-label="App icon file"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0];
+            event.currentTarget.value = "";
+            if (file !== undefined) onAppIconUpload(file);
+          }}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() => inputRef.current?.click()}
+        >
+          {appIcon === null ? "Upload" : "Replace"}
+        </Button>
+        {appIcon !== null && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={onAppIconReset}
+          >
+            Reset
+          </Button>
+        )}
+      </div>
     </SettingsWithControl>
   );
 }
@@ -686,6 +765,9 @@ function ManagedBranchPrefixSetting({
 }
 
 export function AppearanceSettingsSection({
+  appIconDisabled,
+  onAppIconReset,
+  onAppIconUpload,
   appearance,
   appearanceDisabled,
   customThemes,
@@ -843,6 +925,12 @@ export function AppearanceSettingsSection({
             disabled={appearanceDisabled}
             faviconColor={faviconColor}
             onFaviconColorChange={onFaviconColorChange}
+          />
+          <AppIconSettingsControl
+            appIcon={appearance.appIcon}
+            disabled={appIconDisabled}
+            onAppIconReset={onAppIconReset}
+            onAppIconUpload={onAppIconUpload}
           />
           <SplitDimmingSetting />
         </div>
@@ -1283,6 +1371,8 @@ export function SettingsView() {
   const updateGeneralSettingsMutation = useUpdateGeneralSettings();
   const appearance = systemConfigQuery.data?.appearance ?? defaultAppTheme;
   const updateAppearanceMutation = useUpdateAppearance();
+  const setAppIconMutation = useSetAppIcon();
+  const resetAppIconMutation = useResetAppIcon();
   const appThemePreview = useAppThemePreview();
   const location = useLocation();
   const { activePluginId, activeSection, hasUnknownSection } =
@@ -1326,6 +1416,13 @@ export function SettingsView() {
   } else if (activeSection === "appearance") {
     content = (
       <AppearanceSettingsSection
+        appIconDisabled={
+          systemConfigQuery.data === undefined ||
+          setAppIconMutation.isPending ||
+          resetAppIconMutation.isPending
+        }
+        onAppIconReset={() => resetAppIconMutation.mutate()}
+        onAppIconUpload={(file) => setAppIconMutation.mutate(file)}
         appearance={appearance}
         appearanceDisabled={
           systemConfigQuery.data === undefined ||

@@ -238,9 +238,14 @@ export {
 } from "./plugin-state-snapshots.js";
 
 export {
+  clearStoredAppIcon,
+  getStoredAppIcon,
+  getStoredAppIconContent,
   getStoredThemeId,
   getStoredFaviconColor,
+  setStoredAppIcon,
   setStoredAppearance,
+  type StoredAppIconContent,
 } from "./app-theme.js";
 
 export {

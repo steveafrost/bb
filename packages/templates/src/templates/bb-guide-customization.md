@@ -1,7 +1,7 @@
 ---
 kind: instruction
 title: bb Guide — Customization
-summary: Command reference for the bb app theme, server-backed settings, keyboard shortcuts, sidebar preferences, host files, and voice transcription.
+summary: Command reference for the bb app theme and app icon, server-backed settings, keyboard shortcuts, sidebar preferences, host files, and voice transcription.
 intent: Explain the CLI theme surface, server-backed app settings, and the remaining app-wide customization commands.
 editingNotes: Keep flags accurate against the CLI implementation. Theme details live in the bb-cli skill's references/theming.md. Bundled plugins document their settings in the plugins chapter and their skills, not here.
 ---
@@ -32,6 +32,8 @@ activating it; --css dumps the CSS
 bb theme reset Back to the default theme; preserve favicon color
 bb theme favicon set <color> Set favicon color; preserve the active theme
 bb theme favicon reset Reset favicon color; preserve the active theme
+bb theme icon set <path> Upload a custom app icon
+bb theme icon reset Remove the custom app icon
 
 To author a custom theme, run `bb theme dir`, write <that-dir>/<name>/theme.css,
 then `bb theme set <name>`. A name has at most 64 characters, starts with a
@@ -48,6 +50,14 @@ the theme's `:root, .light` block and end the stack with a generic fallback.
 Favicon colors are `default`, `red`, `orange`, `yellow`, `green`, `teal`,
 `blue`, `purple`, and `pink`. Theme and favicon-only commands carry the other
 appearance value forward explicitly.
+
+A custom app icon replaces the browser favicon, the PWA install icon and
+Apple touch icon, and the desktop app icon (the Dock icon on macOS, the window
+icon on Windows and Linux). It takes precedence over the favicon color, and
+`bb theme icon reset` restores the bundled icon and the favicon color. Use a
+square PNG between 128 and 4096 pixels or an SVG, at most 1 MiB; SVGs must not
+contain scripts, event handlers, or external references. Settings → Appearance
+→ App icon uploads and resets the same server-side setting.
 
 Hovering a palette in Settings → Appearance previews it live in that window
 without saving; `bb theme show <id>` is the CLI counterpart.

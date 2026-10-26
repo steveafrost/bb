@@ -180,6 +180,35 @@ export function useChangeCliCommand() {
   });
 }
 
+export function useSetAppIcon() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: {
+      errorMessage: "Failed to set the app icon.",
+    },
+    mutationFn: (icon: File) =>
+      sdk.theme.setAppIcon({ icon, filename: icon.name }),
+    onSuccess: () => {
+      invalidateSystemConfig({ queryClient });
+    },
+  });
+}
+
+export function useResetAppIcon() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: {
+      errorMessage: "Failed to reset the app icon.",
+    },
+    mutationFn: () => sdk.theme.resetAppIcon(),
+    onSuccess: () => {
+      invalidateSystemConfig({ queryClient });
+    },
+  });
+}
+
 export function useUpdateAppearance() {
   const queryClient = useQueryClient();
 

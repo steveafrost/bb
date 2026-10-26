@@ -417,6 +417,100 @@ describe("@bb/sdk", () => {
     ]);
   });
 
+  it("uploads app icon bytes as one multipart file and parses the appearance", async () => {
+    const appearance = {
+      themeId: "nord",
+      customCss: null,
+      faviconColor: "teal" as const,
+      appIcon: {
+        contentType: "image/png" as const,
+        hash: "b".repeat(64),
+        byteLength: 4,
+        updatedAt: 7,
+      },
+      resolvedCodeTheme: { dark: "nord", light: "nord", files: {} },
+    };
+    const calls: Array<{ url: string; method?: string; body: unknown }> = [];
+    const sdk = createBbSdk({
+      transport: createHttpTransport({
+        baseUrl: "http://bb.test/",
+        fetch: async (input, init) => {
+          calls.push({
+            url: String(input),
+            method: init?.method,
+            body: init?.body,
+          });
+          return jsonResponse({ body: appearance });
+        },
+        runtime: "node",
+      }),
+    });
+
+    await expect(
+      sdk.theme.setAppIcon({
+        icon: new Uint8Array([137, 80, 78, 71]),
+        filename: "logo.png",
+      }),
+    ).resolves.toEqual(appearance);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      url: "http://bb.test/api/v1/settings/app-icon",
+      method: "PUT",
+    });
+    const form = calls[0]?.body;
+    if (!(form instanceof FormData)) throw new Error("Missing upload form");
+    expect([...form.keys()]).toEqual(["file"]);
+    const file = form.get("file");
+    if (!(file instanceof File)) throw new Error("Missing uploaded file");
+    expect(file.name).toBe("logo.png");
+    expect(new Uint8Array(await file.arrayBuffer())).toEqual(
+      new Uint8Array([137, 80, 78, 71]),
+    );
+  });
+
+  it("rejects an empty app icon before sending a request", async () => {
+    const queue = createFetchQueue([]);
+    const sdk = createBbSdk({
+      transport: createHttpTransport({
+        baseUrl: "http://bb.test",
+        fetch: queue.fetch,
+        runtime: "node",
+      }),
+    });
+
+    await expect(
+      sdk.theme.setAppIcon({ icon: new Uint8Array() }),
+    ).rejects.toThrow("App icon file must not be empty");
+    expect(queue.requests).toEqual([]);
+  });
+
+  it("resets the app icon with a DELETE", async () => {
+    const appearance = {
+      themeId: "nord",
+      customCss: null,
+      faviconColor: "teal" as const,
+      appIcon: null,
+      resolvedCodeTheme: { dark: "nord", light: "nord", files: {} },
+    };
+    const queue = createFetchQueue([{ body: appearance }]);
+    const sdk = createBbSdk({
+      transport: createHttpTransport({
+        baseUrl: "http://bb.test",
+        fetch: queue.fetch,
+        runtime: "node",
+      }),
+    });
+
+    await expect(sdk.theme.resetAppIcon()).resolves.toEqual(appearance);
+    expect(queue.requests).toEqual([
+      {
+        bodyText: undefined,
+        method: "DELETE",
+        url: "http://bb.test/api/v1/settings/app-icon",
+      },
+    ]);
+  });
+
   it("preserves the favicon color for the theme-id shorthand", async () => {
     const current = {
       appearance: {

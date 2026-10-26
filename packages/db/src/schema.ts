@@ -18,6 +18,7 @@ import { threadOriginKindValues } from "@bb/domain/thread-origin-kind";
 import { threadParentNotificationsValues } from "@bb/domain/thread-parent-notifications";
 import { threadVisibilityValues } from "@bb/domain/thread-visibility";
 import type {
+  AppIconContentType,
   EnvironmentProviderSelection,
   JsonValue,
   EnvironmentStatus,
@@ -479,6 +480,14 @@ export const appTheme = sqliteTable("app_theme", {
     .$type<FaviconColorPreference>()
     .notNull()
     .default("default"),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export const appIcon = sqliteTable("app_icon", {
+  id: text("id").primaryKey(),
+  contentType: text("content_type").$type<AppIconContentType>().notNull(),
+  contentHash: text("content_hash").notNull(),
+  bytes: blob("bytes", { mode: "buffer" }).notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
 

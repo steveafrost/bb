@@ -259,6 +259,9 @@ This index lists every command path that the core CLI registers, including alias
 - `bb theme favicon`
 - `bb theme favicon set`
 - `bb theme favicon reset`
+- `bb theme icon`
+- `bb theme icon set`
+- `bb theme icon reset`
 - `bb theme show`
 - `bb theme reset`
 

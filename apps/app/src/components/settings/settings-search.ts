@@ -139,6 +139,10 @@ export const SETTINGS_SEARCH_INDEX: Record<
         keywords: ["colors", "theme", "syntax highlighting", "custom"],
       },
       { title: "Favicon color", keywords: ["icon", "tab"] },
+      {
+        title: "App icon",
+        keywords: ["icon", "logo", "dock", "favicon", "upload", "custom"],
+      },
       { title: "Fade inactive splits", keywords: ["dim", "panes", "focus"] },
       {
         title: "Navigation",

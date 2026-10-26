@@ -10,15 +10,19 @@ import {
 import { getGateAuthKind } from "../request-context.js";
 import { serverAccessStatus } from "../services/machines/server-access.js";
 import {
+  clearStoredAppIcon,
   getAppSettings,
   getAppKeybindingOverrides,
   getExperiments,
+  getStoredAppIcon,
+  getStoredAppIconContent,
   getStoredFaviconColor,
   getStoredThemeId,
   hasActiveThreadAttention,
   setAppSettings,
   setAppKeybindingOverrides,
   setExperiments,
+  setStoredAppIcon,
   setStoredAppearance,
 } from "@bb/db";
 import {
@@ -81,6 +85,11 @@ import {
   resolveCustomThemeCssPath,
   resolveThemeRootPath,
 } from "../services/system/custom-themes.js";
+import {
+  assertAppIconRequestSize,
+  buildAppIconManifest,
+  readAppIconUpload,
+} from "../services/system/app-icon.js";
 import {
   installGlobalCliSkills,
   listInstallableMachineIds,
@@ -189,13 +198,19 @@ export function registerSystemRoutes(
         themeId,
         customCss: pluginCss,
         faviconColor,
+        appIcon: getStoredAppIcon(deps.db),
         resolvedCodeTheme: resolveCodeTheme(
           pluginService.readThemeCodeTheme(themeId),
           themeId,
         ),
       };
     }
-    return resolveAppTheme(themeRoot, themeId, faviconColor);
+    return resolveAppTheme(
+      themeRoot,
+      themeId,
+      faviconColor,
+      getStoredAppIcon(deps.db),
+    );
   }
 
   async function buildSystemConfigResponse(serverUrl: string) {
@@ -387,6 +402,67 @@ export function registerSystemRoutes(
     setStoredAppearance(deps.db, { themeId, faviconColor });
     deps.hub.notifySystem(["config-changed"]);
     return context.json(await resolveSelectedTheme(themeId, faviconColor));
+  });
+
+  async function resolveStoredTheme(): Promise<AppTheme> {
+    return resolveSelectedTheme(
+      getStoredThemeId(deps.db),
+      getStoredFaviconColor(deps.db),
+    );
+  }
+
+  put(routes.setAppIcon, async (context) => {
+    assertAppIconRequestSize(context.req.header("content-length"));
+    let formData: FormData;
+    try {
+      formData = await context.req.formData();
+    } catch {
+      throw new ApiError(
+        400,
+        "invalid_request",
+        "App icon upload must be multipart/form-data",
+      );
+    }
+    setStoredAppIcon(deps.db, await readAppIconUpload(formData));
+    deps.hub.notifySystem(["config-changed"]);
+    return context.json(await resolveStoredTheme());
+  });
+
+  del(routes.resetAppIcon, async (context) => {
+    clearStoredAppIcon(deps.db);
+    deps.hub.notifySystem(["config-changed"]);
+    return context.json(await resolveStoredTheme());
+  });
+
+  get(routes.appIcon, (context) => {
+    const icon = getStoredAppIconContent(deps.db);
+    if (icon === null) {
+      throw new ApiError(
+        404,
+        "app_icon_not_found",
+        "No custom app icon is set",
+      );
+    }
+    return pluginImageResponse(
+      context,
+      icon,
+      hashedAssetCacheControl(context.req.query("h"), icon.hash),
+    );
+  });
+
+  get(routes.appIconManifest, (context) => {
+    const icon = getStoredAppIconContent(deps.db);
+    if (icon === null) {
+      throw new ApiError(
+        404,
+        "app_icon_not_found",
+        "No custom app icon is set",
+      );
+    }
+    return context.body(JSON.stringify(buildAppIconManifest(icon)), 200, {
+      "content-type": "application/manifest+json",
+      "cache-control": "no-store",
+    });
   });
 
   get(routes.resolveTheme, async (context) => {

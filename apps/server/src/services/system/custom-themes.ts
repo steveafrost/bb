@@ -7,6 +7,7 @@ import {
   isBuiltInThemeId,
   resolveCodeTheme,
   type AppTheme,
+  type AppIcon,
   type FaviconColorPreference,
 } from "@bb/domain";
 import { readCustomThemeCodeTheme } from "./code-themes.js";
@@ -59,6 +60,7 @@ export function resolveAppTheme(
   themeRoot: string,
   themeId: string,
   faviconColor: FaviconColorPreference,
+  appIcon: AppIcon | null,
 ): AppTheme {
   const declared = isBuiltInThemeId(themeId)
     ? null
@@ -69,6 +71,7 @@ export function resolveAppTheme(
       themeId,
       customCss: null,
       faviconColor,
+      appIcon,
       resolvedCodeTheme,
     };
   }
@@ -77,8 +80,9 @@ export function resolveAppTheme(
     return {
       ...defaultAppTheme,
       faviconColor,
+      appIcon,
       resolvedCodeTheme: resolveCodeTheme(null, "default"),
     };
   }
-  return { themeId, customCss, faviconColor, resolvedCodeTheme };
+  return { themeId, customCss, faviconColor, appIcon, resolvedCodeTheme };
 }

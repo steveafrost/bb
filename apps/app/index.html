@@ -48,7 +48,29 @@
     <script>
       (function () {
         var dev = "%MODE%" === "development";
+        function getCachedAppIcon() {
+          try {
+            var icon = JSON.parse(localStorage.getItem("bb.appIcon"));
+            return icon &&
+              /^[0-9a-f]{64}$/.test(icon.hash) &&
+              (icon.contentType === "image/png" ||
+                icon.contentType === "image/svg+xml")
+              ? icon
+              : null;
+          } catch {
+            return null;
+          }
+        }
+        var appIcon = getCachedAppIcon();
+        var appIconHref = appIcon
+          ? "/api/v1/system/app-icon?h=" + appIcon.hash
+          : null;
         function setFavicon(dark) {
+          if (appIconHref) {
+            document.getElementById("favicon-32").href = appIconHref;
+            document.getElementById("favicon-16").href = appIconHref;
+            return;
+          }
           var s = dev ? "-dev" : dark ? "-dark" : "";
           document.getElementById("favicon-32").href =
             "/favicon-32x32" + s + ".png";
@@ -74,10 +96,13 @@
           }
         }
         var faviconColorSuffix = getFaviconColorSuffix();
-        document.getElementById("app-manifest").href =
-          "/manifest" + faviconColorSuffix + ".webmanifest";
+        document.getElementById("app-manifest").href = appIcon
+          ? "/api/v1/system/app-icon/manifest.webmanifest"
+          : "/manifest" + faviconColorSuffix + ".webmanifest";
         document.getElementById("apple-touch-icon").href =
-          "/apple-touch-icon" + faviconColorSuffix + ".png";
+          appIcon && appIcon.contentType === "image/png"
+            ? appIconHref
+            : "/apple-touch-icon" + faviconColorSuffix + ".png";
         // Pre-paint browser-chrome color so PWA/status-bar chrome doesn't
         // flash the wrong shade before the app boots; useTheme.ts owns the
         // meta tag afterwards. Mirrors the bb.theme preference resolution and

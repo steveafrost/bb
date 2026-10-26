@@ -37,6 +37,22 @@ export type BbDesktopWindowState = z.infer<typeof bbDesktopWindowStateSchema>;
 export const bbDesktopThemeSchema = z.enum(["system", "light", "dark"]);
 export type BbDesktopTheme = z.infer<typeof bbDesktopThemeSchema>;
 
+export const BB_DESKTOP_APP_ICON_DATA_URL_PREFIX = "data:image/png;base64,";
+export const BB_DESKTOP_APP_ICON_MAX_DATA_URL_LENGTH = 4 * 1024 * 1024;
+
+export const bbDesktopAppIconSchema = z
+  .object({
+    pngDataUrl: z
+      .string()
+      .startsWith(BB_DESKTOP_APP_ICON_DATA_URL_PREFIX)
+      .max(BB_DESKTOP_APP_ICON_MAX_DATA_URL_LENGTH),
+  })
+  .strict()
+  .nullable();
+export type BbDesktopAppIcon = NonNullable<
+  z.infer<typeof bbDesktopAppIconSchema>
+>;
+
 export const bbDesktopClipboardContentSchema = z
   .object({
     text: z.string(),
@@ -97,5 +113,6 @@ export interface BbDesktopApi extends BbDesktopInfo {
     directionalCommands?: readonly AppCommandId[],
   ): void;
   setTheme(theme: BbDesktopTheme): void;
+  setAppIcon?(icon: BbDesktopAppIcon | null): void;
   writeClipboard?(content: BbDesktopClipboardContent): Promise<void>;
 }

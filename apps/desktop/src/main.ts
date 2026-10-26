@@ -24,6 +24,7 @@ import {
   type Event,
   type IpcMainInvokeEvent,
   type MessageBoxOptions,
+  type NativeImage,
   type WebContents,
 } from "electron";
 import { autoUpdater } from "electron-updater";
@@ -208,9 +209,14 @@ import {
   BB_DESKTOP_INFO_CHANGED_CHANNEL,
   BB_DESKTOP_INSTALL_UPDATE_CHANNEL,
   BB_DESKTOP_OPEN_EXTERNAL_URL_CHANNEL,
+  BB_DESKTOP_SET_APP_ICON_CHANNEL,
   BB_DESKTOP_SET_THEME_CHANNEL,
   BB_DESKTOP_ZOOM_COMMAND_CHANNEL,
 } from "./desktop-update-ipc.js";
+import {
+  createDesktopAppIconController,
+  type DesktopAppIconController,
+} from "./desktop-app-icon.js";
 import {
   BB_DESKTOP_SERVER_CHOICES_CHANGED_CHANNEL,
   BB_DESKTOP_APP_COMMAND_CHANNEL,
@@ -419,6 +425,8 @@ let systemConfigSync: SystemConfigSync | null = null;
 let systemConfigRefreshToken = 0;
 let refreshRemoteSystemConfig: (() => void) | null = null;
 const applicationWindowWebContentsIds = new Set<number>();
+let desktopAppIconController: DesktopAppIconController<NativeImage> | null =
+  null;
 const splitNavigationEnabledWebContentsIds = new Set<number>();
 const splitNavigationCommandsByWebContentsId = new Map<
   number,
@@ -2442,6 +2450,10 @@ function registerDesktopUpdateIpc(): void {
     }
     nativeTheme.themeSource = parsed.data;
   });
+  ipcMain.on(BB_DESKTOP_SET_APP_ICON_CHANNEL, (event, payload: unknown) => {
+    if (!applicationWindowWebContentsIds.has(event.sender.id)) return;
+    desktopAppIconController?.handleMessage(payload);
+  });
   ipcMain.on(STARTUP_ACTION_CHANNEL, (event, ...payload: unknown[]) => {
     const action = startupActionIdSchema.safeParse(payload[0]);
     const page = startupErrorPage;
@@ -2876,6 +2888,7 @@ async function runDesktopApp(): Promise<void> {
     connectSessionRenewal?.renewIfDue();
   });
   app.on("browser-window-created", (_event, browserWindow) => {
+    desktopAppIconController?.applyToNewWindow(browserWindow);
     if (desktopBrowserViewManager === null) {
       return;
     }
@@ -2904,8 +2917,7 @@ async function runDesktopApp(): Promise<void> {
   }
 
   const paths = createDesktopPathContext();
-  const devIcon =
-    !paths.isPackaged || process.env.BB_DESKTOP_DEV_ICON === "1";
+  const devIcon = !paths.isPackaged || process.env.BB_DESKTOP_DEV_ICON === "1";
   const iconPath = resolveDesktopIconPath({
     devIcon,
     packagedIconFileName: DESKTOP_RELEASE_INFO.iconFileName,
@@ -2977,6 +2989,15 @@ async function runDesktopApp(): Promise<void> {
   if (process.platform === "darwin" && app.dock !== undefined && devIcon) {
     app.dock.setIcon(iconPath);
   }
+  const bundledIcon = nativeImage.createFromPath(iconPath);
+  const dock = process.platform === "darwin" ? app.dock : undefined;
+  desktopAppIconController = createDesktopAppIconController<NativeImage>({
+    platform: process.platform,
+    bundledIcon,
+    createImageFromDataUrl: (dataUrl) => nativeImage.createFromDataURL(dataUrl),
+    setDockIcon: dock === undefined ? null : (icon) => dock.setIcon(icon),
+    listWindows: () => BrowserWindow.getAllWindows(),
+  });
   await reapStaleOwnedRuntime({
     signal: "SIGTERM",
     timeoutMs: 5_000,
@@ -3300,7 +3321,7 @@ async function runDesktopApp(): Promise<void> {
       return nativeTheme.shouldUseDarkColors;
     },
     displayWorkAreas: null,
-    icon: nativeImage.createFromPath(iconPath),
+    icon: bundledIcon,
     isLinuxTransparent: hasLinuxWindowArgument({
       argument: LINUX_TRANSPARENT_WINDOW_ARGUMENT,
       argv: process.argv,
